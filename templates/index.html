@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ТрешКеш - Сдавай мусор, получай награды</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Яндекс.Карты загружаются динамически через yandex-maps-loader.js -->
+    {% if yandex_maps_api_key %}
+    <script>window.YANDEX_MAPS_API_KEY = '{{ yandex_maps_api_key }}';</script>
+    {% endif %}
+    <script src="/static/js/yandex-maps-loader.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Загрузочный экран -->
+        <div id="loading" class="loading-screen">
+            <div class="spinner"></div>
+            <p>Загрузка...</p>
+        </div>
+
+        <!-- Главный экран -->
+        <div id="main-screen" class="screen hidden">
+            <!-- Шапка -->
+            <header class="header">
+                <div class="header-content">
+                    <div class="header-left">
+                        <div class="logo-compact">♻️</div>
+                        <div class="header-title">
+                            <span class="logo-text">ТрешКеш</span>
+                        </div>
+                    </div>
+                    <div class="balance-compact" id="balance-display">
+                        <span class="balance-value" id="balance-value">0</span>
+                        <span class="balance-currency">₮</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Контент -->
+            <main class="content">
+                <!-- Вкладка: Карта -->
+                <div id="tab-map" class="tab-content active">
+                    <div class="map-container" id="map-container">
+                        <div class="map-placeholder" id="map-placeholder">
+                            <p>🗺️ Карта загружается...</p>
+                            <p class="map-hint">Разрешите доступ к геолокации для показа ближайших пунктов</p>
+                        </div>
+                        <div id="map" class="map"></div>
+                    </div>
+                    <div class="points-list" id="points-list">
+                        <!-- Список пунктов будет загружен динамически -->
+                    </div>
+                </div>
+
+                <!-- Вкладка: Каталог наград -->
+                <div id="tab-catalog" class="tab-content">
+                    <div class="catalog-header">
+                        <div class="catalog-title-section">
+                            <h2>Каталог наград</h2>
+                            <p class="catalog-subtitle">Обменивайте трешкоины на полезные вещи</p>
+                        </div>
+                        <div class="view-toggle">
+                            <button class="view-btn active" data-view="grid" title="Сетка">
+                                <span>⊞</span>
+                            </button>
+                            <button class="view-btn" data-view="list" title="Список">
+                                <span>☰</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="rewards-container">
+                        <div class="rewards-grid" id="rewards-grid">
+                            <!-- Награды будут загружены динамически -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка: История -->
+                <div id="tab-history" class="tab-content">
+                    <div class="history-header">
+                        <h2>История операций</h2>
+                    </div>
+                    <div class="transactions-list" id="transactions-list">
+                        <!-- Транзакции будут загружены динамически -->
+                    </div>
+                </div>
+
+                <!-- Вкладка: Профиль -->
+                <div id="tab-profile" class="tab-content">
+                    <div class="profile-header">
+                        <div class="profile-avatar" id="profile-avatar">👤</div>
+                        <h2 id="profile-name">Пользователь</h2>
+                        <p id="profile-username" class="profile-username" style="display: none;"></p>
+                        <p class="profile-balance">Баланс: <span id="profile-balance-value">0</span> трешкоинов</p>
+                        <div id="profile-level" class="profile-level">Уровень 1</div>
+                        <div class="level-progress-bar">
+                            <div class="level-progress" id="level-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="profile-stats" id="profile-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">кг сдано</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">сдач</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">наград</div>
+                        </div>
+                    </div>
+                    <div class="profile-menu">
+                        <button class="profile-menu-item" id="btn-scan-qr">
+                            <span class="menu-icon">📷</span>
+                            <span class="menu-text">Сканировать QR-код</span>
+                            <span class="menu-arrow">→</span>
+                        </button>
+                        <button class="profile-menu-item" id="btn-upload-receipt">
+                            <span class="menu-icon">📄</span>
+                            <span class="menu-text">Загрузить чек</span>
+                            <span class="menu-arrow">→</span>
+                        </button>
+                        <a href="/legal/agreement" class="profile-menu-item" target="_blank">
+                            <span class="menu-icon">📋</span>
+                            <span class="menu-text">Пользовательское соглашение</span>
+                            <span class="menu-arrow">→</span>
+                        </a>
+                        <a href="/legal/privacy" class="profile-menu-item" target="_blank">
+                            <span class="menu-icon">🔒</span>
+                            <span class="menu-text">Политика конфиденциальности</span>
+                            <span class="menu-arrow">→</span>
+                        </a>
+                        <button class="profile-menu-item" id="btn-share-app">
+                            <span class="menu-icon">📤</span>
+                            <span class="menu-text">Поделиться приложением</span>
+                            <span class="menu-arrow">→</span>
+                        </button>
+                        <button class="profile-menu-item" id="btn-achievements">
+                            <span class="menu-icon">🏆</span>
+                            <span class="menu-text">Достижения</span>
+                            <span class="menu-arrow">→</span>
+                        </button>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Bottom Navigation -->
+            <nav class="bottom-nav">
+                <button class="nav-item active" data-tab="map">
+                    <span class="nav-icon">🗺️</span>
+                    <span class="nav-label">Карта</span>
+                </button>
+                <button class="nav-item" data-tab="catalog">
+                    <span class="nav-icon">🎁</span>
+                    <span class="nav-label">Каталог</span>
+                </button>
+                <button class="nav-item" data-tab="history">
+                    <span class="nav-icon">📜</span>
+                    <span class="nav-label">История</span>
+                </button>
+                <button class="nav-item" data-tab="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-label">Профиль</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Модальное окно: Сканирование QR -->
+        <div id="modal-qr" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Сканирование QR-кода</h3>
+                    <button class="modal-close" data-modal="modal-qr">×</button>
+                </div>
+                <div class="modal-body">
+                    <div id="qr-scanner" class="qr-scanner">
+                        <video id="qr-video" autoplay playsinline></video>
+                        <canvas id="qr-canvas" class="hidden"></canvas>
+                        <div class="qr-overlay">
+                            <div class="qr-frame"></div>
+                        </div>
+                    </div>
+                    <p class="qr-hint">Наведите камеру на QR-код в пункте приема</p>
+                    <div id="qr-result" class="qr-result hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно: Загрузка чека -->
+        <div id="modal-receipt" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Загрузка чека</h3>
+                    <button class="modal-close" data-modal="modal-receipt">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="receipt-upload">
+                        <input type="file" id="receipt-input" accept="image/*" capture="environment" class="hidden">
+                        <button class="btn btn-primary" id="btn-select-receipt">
+                            📷 Выбрать фото чека
+                        </button>
+                        <div id="receipt-preview" class="receipt-preview hidden"></div>
+                        <div class="form-group">
+                            <label>Выберите пункт приема:</label>
+                            <select id="receipt-point-select" class="form-control">
+                                <option value="">Загрузка...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Тип мусора:</label>
+                            <select id="receipt-material-select" class="form-control">
+                                <option value="">Выберите тип</option>
+                                <option value="пластик">Пластик</option>
+                                <option value="бумага">Бумага</option>
+                                <option value="стекло">Стекло</option>
+                                <option value="металл">Металл</option>
+                                <option value="электроника">Электроника</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Вес (кг):</label>
+                            <input type="number" id="receipt-weight" class="form-control" min="0.1" step="0.1" value="1.0">
+                        </div>
+                        <button class="btn btn-success" id="btn-submit-receipt" disabled>
+                            ✅ Подтвердить сдачу
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно: Детали пункта -->
+        <div id="modal-point" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-point-name">Пункт приема</h3>
+                    <button class="modal-close" data-modal="modal-point">×</button>
+                </div>
+                <div class="modal-body">
+                    <div id="modal-point-details"></div>
+                    <button class="btn btn-primary btn-block" id="btn-scan-point-qr">
+                        📷 Сканировать QR-код пункта
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно: Успешная сдача -->
+        <div id="modal-success" class="modal hidden">
+            <div class="modal-content modal-success-content">
+                <div class="success-icon">✅</div>
+                <h3>Мусор успешно сдан!</h3>
+                <p class="success-message" id="success-message"></p>
+                <button class="btn btn-primary" data-modal="modal-success">Отлично!</button>
+            </div>
+        </div>
+
+        <!-- Модальное окно: Достижения -->
+        <div id="modal-achievements" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🏆 Достижения</h3>
+                    <button class="modal-close" data-modal="modal-achievements">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="achievements-grid" id="achievements-grid">
+                        <!-- Достижения будут загружены динамически -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/max-bridge.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
+
